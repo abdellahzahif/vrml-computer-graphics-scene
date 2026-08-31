@@ -1,0 +1,572 @@
+#VRML V2.0 utf8
+
+#==============================================================================
+#PROTO & SETUP
+#==============================================================================
+
+EXTERNPROTO Eislauefer [ #funktioniert wie ein Import-Befehl
+  field SFColor kopfFarbe #setzt unveränderbare Kopffarbe für ein Eisläufer
+  field SFString name #jeder Eisläufer hat einen eigenen Namen
+  exposedField SFBool laeuft #Steuerung für die Beine, für die Routen
+  exposedField SFBool taschenlampe #Steuerung für die Taschenlampe
+  #exposed= von außen veränderbar ,  field= nicht veränderbar 
+] "Eislauefer.wrl"
+
+NavigationInfo {
+  headlight FALSE  #kein Headlight (Licht von Viewpoint aus)
+  #Lichtquelle die fest an virtuelle Kamera gebunden ist
+}
+
+Background {
+  skyColor [ 1.0 0.7 0.4, 1.0 0.5 0.3, 0.8 0.3 0.2 ] #Farbe des Himmels mit Übergang
+  skyAngle [ 1.0, 1.57 ] #Winkel wo Farben platziert werden
+  groundColor [ 0.4 0.4 0.4, 0.4 0.4 0.4, 0.3 0.3 0.3 ] #Boden erweitert, Farbe des Bodens 
+  groundAngle [ 1.2, 1.8 ] #Übergang am Horizont zwischen Boden und Himmel
+}
+
+#Sonne (Hauptlichtquelle) wird vom Nacht-Script gesteuert
+DEF SONNE DirectionalLight { #DirectionalLight simuliert eine unendlich weit entfernte Lichtquelle 
+  direction -0.5 -1 -0.5  #Richtungsvektor, in den das Licht strahlt
+  intensity 0.8 #Helligkeit
+  color 1 1 1 #weißes Tageslicht
+}
+
+#==============================================================================
+#VIEWPOINTS (Kameras)
+#==============================================================================
+
+#name, position vom viewpoint, orientation=Blickrichtung
+Viewpoint { description "Vogelperspektive" position 0 80 0 orientation 1 0 0 -1.57 }
+Viewpoint { description "Haupteingang" position 0 1.7 25 orientation 0 1 0 3.14 }
+Viewpoint { description "Zuschauerbank Rechts" position 35 1.5 0 orientation 0 1 0 1.57 }
+Viewpoint { description "Uebersicht Ecke" position -40 25 40 orientation 0.2 1 0 -0.8 }
+Viewpoint { description "Mitten auf dem Eis" position 0 1.5 10 orientation 0 1 0 3.14 }
+
+#First-Person Kameras
+Viewpoint { description "Roter Eisläufer - First Person" position 0 1.85 -2 orientation 0 1 0 0 jump FALSE }
+Viewpoint { description "Grüner Eisläufer - First Person" position 5 1.85 10 orientation 0 1 0 0 jump FALSE }
+Viewpoint { description "Blauer Eisläufer - First Person" position -10 1.85 15 orientation 0 1 0 0 jump FALSE }
+Viewpoint { description "Gelber Eisläufer - First Person" position -5 1.85 20 orientation 0 1 0 0 jump FALSE }
+
+#==============================================================================
+#OBJEKT-DEFINITIONEN 
+#==============================================================================
+
+#Definition: Laterne 
+DEF LATERNE_GEO Group {
+  children [
+    #Pfahl
+    Shape {
+      appearance Appearance { material Material { diffuseColor 0.2 0.2 0.2 } }
+      geometry Cylinder { height 8 radius 0.1 }
+    },
+    #Licht-Schalter-Logik (An/Aus)
+    DEF LICHT_MASTER_SWITCH Switch {
+      whichChoice 0 #standardmäßig 0, also Licht an 
+      choice [
+        #Zustand 0= an
+        Group { children [
+          SpotLight { location 0 4 0 direction 0 -1 0 cutOffAngle 0.8 beamWidth 0.6 color 1 1 0.8 intensity 0.8 attenuation 0 0.5 0 },
+
+          #Glühbirne
+          Transform { translation 0 4 0 children [ Shape { appearance Appearance { material Material 
+          { diffuseColor 0 0 0 emissiveColor 1.0 0.9 0.3 transparency 0.3 } } geometry Sphere { radius 0.4 } } ] },
+          
+          #Zwei Lichtkegel
+          Transform { translation 0 1.4 0 children [
+
+             #1.Lichtkegel (außen, gerinere Intensität, größerer Radius)
+             Shape { appearance Appearance { material Material { diffuseColor 1.0 0.9 0.2 emissiveColor 1.0 0.9 0.2 transparency 0.85 } } 
+             geometry Cone { bottomRadius 13.0 height 6 } },
+             #2.Lichtkegel (innen, höhere Intensität, kleinerer Radius)
+             Shape { appearance Appearance { material Material { diffuseColor 1.0 1.0 0.6 emissiveColor 1.0 1.0 0.6 transparency 0.6 } } 
+             geometry Cone { bottomRadius 2.0 height 5 } }
+          ]}
+        ]},
+        #Zustand 1= aus
+        Group { children [
+          #Glühbirne wenn sie nicht leuchtet
+          Transform { translation 0 4 0 children [ Shape { appearance Appearance { material Material 
+          { diffuseColor 0.3 0.3 0.3 emissiveColor 0 0 0  } } geometry Sphere { radius 0.4 } } ] }
+          #diffuseColor = Farbe von Glas ohne Licht ,    emissiveColor = Schwarz, kein Leuchten
+        ]}
+      ]
+    }
+  ]
+}
+
+#Definition für Sitzbank 
+DEF SITZBANK_GEO Transform {
+  rotation 0 1 0 1.5708
+  children [
+    Shape { appearance Appearance { material Material { diffuseColor 0.6 0.3 0.1 } } geometry Box { size 3 0.2 1.5 } }, #Sitz
+
+    Transform { translation -1.3 -0.5 0.6 children [ Shape { appearance Appearance { material Material { diffuseColor 0.9 0.9 0.9 } } 
+    geometry Box { size 0.2 1.0 0.2 } } ] }, #Bein 1
+    Transform { translation 1.3 -0.5 0.6 children [ Shape { appearance Appearance { material Material { diffuseColor 0.9 0.9 0.9 } } 
+    geometry Box { size 0.2 1.0 0.2 } } ] },  #Bein 2
+    Transform { translation -1.3 -0.5 -0.6 children [ Shape { appearance Appearance { material Material { diffuseColor 0.9 0.9 0.9 } } 
+    geometry Box { size 0.2 1.0 0.2 } } ] }, #Bein 3
+    Transform { translation 1.3 -0.5 -0.6 children [ Shape { appearance Appearance { material Material { diffuseColor 0.9 0.9 0.9 } } 
+    geometry Box { size 0.2 1.0 0.2 } } ] }   #Bein 4
+
+    #Sitzfläche: diffuceColor=rot/braun  ,     Breite 3,  Dicke 0.2,  Tiefe 1.5
+    #Beine: diffuseColor: sehr helles grau,     size: breite, höhe , tiefe
+  ]
+}
+
+#Definition für Pflanze
+DEF PFLANZE_GEO Group {
+  children [
+    Transform { translation 0 0.3 0 children [ Shape { appearance Appearance { material Material { diffuseColor 0.5 0.2 0.1 } } 
+    geometry Cylinder { height 0.6 radius 0.4 } } ] }, #Topf
+
+    Transform { translation 0 0.85 0 children [ Shape { appearance Appearance { material Material { diffuseColor 0.1 0.6 0.1 } } 
+    geometry Sphere { radius 0.5 } } ] } #Grün
+  ]
+}
+
+#Definition für Mülleimer
+DEF MUELLEIMER_GEO Transform {
+  translation 0 0.4 0
+  children [ Shape { appearance Appearance { material Material { diffuseColor 0.3 0.3 0.3 } } 
+  geometry Cylinder { height 0.8 radius 0.3 } } ]
+}
+
+#Definition für Haus Optik ( mit Textur) 
+DEF HAUS_OPTIK Appearance {
+    texture ImageTexture { url "Holz.jpg" } #Bild
+    textureTransform TextureTransform { scale 2 2 } #Bild zweimal nebeneinander und übereinander wie Kacheln (bessere Optik)
+    material Material { diffuseColor 1 1 1 } #Haus weiß damit textur nicht verfärbt 
+}
+
+#==============================================================================
+#Logik und Schalter
+#==============================================================================
+
+#Schalter 1: Tag/Nacht (Links, auf Augenhöhe)
+Group {
+  children [
+    DEF NACHT_SCRIPT Script { #Nachtscript für Routen 
+      eventIn SFTime touchTime #Empfängt Signal von TouchSensor
+      eventOut SFFloat sunIntensity #Sendet i0.0 oder 1.0 (an/aus) an intensity
+      eventOut SFBool flashlightState #Wahr/Falsch Taschenlampen der Eisläufer
+      eventOut SFColor buttonColor #sendet Farbe an Material des Schalter-Knofpes
+      eventOut SFInt32 lanternState #sendet 0/1 an whichColor vom Laternen-Switch
+      field SFBool isNight FALSE #merkt sich ob Tag/Nacht ist True/False
+      url "javascript:              #Funktion wird gestartet wenn touchTine ein Signal begommt
+        function touchTime(val) {   #val: Zeitstempel des Klicks
+            if (isNight) {
+                //es wird Tag
+                isNight = FALSE;
+                sunIntensity = 0.8;      
+                flashlightState = FALSE;  #Taschenlampen ausschalten
+                lanternState = 0;        //Laternen an
+                buttonColor = new SFColor(0, 0, 1);  #Schalterknopf Blau färben
+            } else {
+                //es wird Nacht
+                isNight = TRUE;
+                sunIntensity = 0.1;      
+                flashlightState = TRUE;  #Taschenlampen an
+                lanternState = 1;        //Laternen aus
+                buttonColor = new SFColor(1, 1, 0);  #Schalterknopf Gelb färben
+            }
+        }
+      "
+    }
+    Transform { #Sichtbarer Schalter
+      translation -6 1.6 37 #links vom Eingang
+      children [
+
+        #Text über Schalter, Billboard für Beschriftungen, Inhalt immer zur Kamera gedreht 
+        Transform { translation 0 0.9 0 children [ Billboard { axisOfRotation 0 0 0 children [  
+          #axisOfRotation = Schild darf sich frei in alle Richtungen drehen
+          Shape { geometry Text { string ["Tag/Nacht"] fontStyle FontStyle { size 0.4 justify "MIDDLE" } }  #Größe 0.4 und zentriert
+          appearance Appearance { material Material { diffuseColor 1 1 1 } } } ] } ] }, #Textfarbe weiß
+
+          #Unsichtbarer Schalter = TouchSensor
+        DEF NACHT_SENSOR TouchSensor { description "Nachtmodus umschalten" }, #description erscheint wenn Maus drüberfährt
+        Shape { appearance Appearance { material DEF NACHT_KNOPF_MAT Material { diffuseColor 0 0 1 } } geometry Sphere { radius 0.4 } }
+        #Name für Material um später Farbe von Blau auf Gelb zu wechseln
+        #Startfare = diffuseColor = Blau
+      ]
+    }
+  ]
+}
+
+#Schalter 2 für Laternen (Rechts, Hoch) 
+#Wird für Routing gebraucht
+Group {
+  children [
+    DEF LICHT_SCRIPT Script {
+      eventIn SFTime touchTime #Signal wenn TouchSensor geklickt wird
+      eventOut SFInt32 switchChoice #Sendet 0/1 an/aus an SwitchKnoten
+      eventOut SFColor buttonColor #Sendet Farbe an Schalter, damit rot (aus) oder grün (an) leuchtet
+      field SFBool isOn TRUE #merkt sich aktuellen Zustand, true= Laternen an
+      url "javascript:
+        function touchTime(value) {
+            if (isOn) {
+                // Aus
+                switchChoice = 1; buttonColor = new SFColor(1, 0, 0); isOn = FALSE;
+            } else {
+                // An
+                switchChoice = 0; buttonColor = new SFColor(0, 1, 0); isOn = TRUE;
+            }
+        }
+      "
+    }
+    Transform { #sichtbarer Schalter
+      translation 2.5 4.0 37 #Rechts, hoch
+      children [ #Text über Schalter, Billboard für Beschriftungen, Inhalt immer zur Kamera gedreht 
+        Transform { translation 0 1.3 0 children [ Billboard { axisOfRotation 0 0 0 children [ 
+          Shape { geometry Text { string ["Lichtschalter"] fontStyle FontStyle { size 0.8 justify "MIDDLE" } } 
+          appearance Appearance { material Material { diffuseColor 1 1 1 } } } ] } ] },
+
+
+          #Unsichtbarer Schalter = TouchSensor
+        DEF SCHALTER_SENSOR TouchSensor { description "Licht an/aus" }, #description erscheint wenn Maus drüberfährt
+        Shape { appearance Appearance { material DEF SCHALTER_MAT Material 
+        { diffuseColor 0 1 0 emissiveColor 0.2 0.2 0.2 } } geometry Sphere { radius 0.8 } }
+        #Name für Material um später Farbe von grün auf rot zu wechseln
+        #Startfare = diffuseColor = grün
+        #emissiveColor: leuchtet leicht, damit man es im dunkeln erkennt
+      ]
+    }
+  ]
+}
+
+#==============================================================================
+#Statische Objekte (Boden, Gebäude, Deko)
+#==============================================================================
+
+Group { #Hauptgruppe für statische Objekte
+  children [
+    #Boden
+    Transform { translation 0 -0.8 0 children [ Shape { appearance Appearance { material Material { diffuseColor 0.4 0.4 0.4 } } 
+    geometry Box { size 120 0.1 120 } } ] }, #Marktplatz
+    Transform { translation 0 -0.75 0 children [ Shape { appearance Appearance { material Material { diffuseColor 0.8 0.95 1.0 } } 
+    geometry Box { size 60 0.05 70 } } ] }, #Eis
+    
+    #Banden 
+    Group {
+        children [
+            Transform { translation 0 0.25 0 children [
+                Transform { translation -17 0 35.05 children [ Shape { geometry Box { size 26 2.0 0.1 } } ] },
+                Transform { translation 17 0 35.05 children [ Shape { geometry Box { size 26 2.0 0.1 } } ] },
+                Transform { translation 0 0 -35.05 children [ Shape { geometry Box { size 60 2.0 0.1 } } ] },
+                Transform { translation -30.05 0 0 children [ Shape { geometry Box { size 0.1 2.0 70.2 } } ] },
+                Transform { translation 30.05 0 0 children [ Shape { geometry Box { size 0.1 2.0 70.2 } } ] }
+            ]}
+        ]
+    },
+
+    #Laternen-Positionierung
+    Group {
+        children [
+            Transform { translation -33 0 -35, children [ USE LATERNE_GEO ] },
+            Transform { translation -33 0 -15, children [ USE LATERNE_GEO ] },
+            Transform { translation -33 0 15, children [ USE LATERNE_GEO ] },
+            Transform { translation -33 0 35, children [ USE LATERNE_GEO ] },
+            Transform { translation 33 0 -35, children [ USE LATERNE_GEO ] },
+            Transform { translation 33 0 -15, children [ USE LATERNE_GEO ] },
+            Transform { translation 33 0 15, children [ USE LATERNE_GEO ] },
+            Transform { translation 33 0 35, children [ USE LATERNE_GEO ] }
+        ]
+    },
+
+    #Bänke-Positionierung
+    Group {
+        children [
+            #Links
+            Transform { translation -35 -0.3 -30, children [ USE SITZBANK_GEO ] },
+            Transform { translation -35 -0.3 -10, children [ USE SITZBANK_GEO ] },
+            Transform { translation -35 -0.3 10, children [ USE SITZBANK_GEO ] },
+            Transform { translation -35 -0.3 30, children [ USE SITZBANK_GEO ] },
+            Transform { translation -35 -0.3 -20, children [ USE SITZBANK_GEO ] },
+            Transform { translation -35 -0.3 0, children [ USE SITZBANK_GEO ] },
+            Transform { translation -35 -0.3 20, children [ USE SITZBANK_GEO ] },
+            #Rechts
+            Transform { translation 35 -0.3 -30, children [ USE SITZBANK_GEO ] },
+            Transform { translation 35 -0.3 -10, children [ USE SITZBANK_GEO ] },
+            Transform { translation 35 -0.3 10, children [ USE SITZBANK_GEO ] },
+            Transform { translation 35 -0.3 30, children [ USE SITZBANK_GEO ] },
+            Transform { translation 35 -0.3 -20, children [ USE SITZBANK_GEO ] },
+            Transform { translation 35 -0.3 0, children [ USE SITZBANK_GEO ] },
+            Transform { translation 35 -0.3 20, children [ USE SITZBANK_GEO ] }
+        ]
+    },
+
+    #Pflanzen-Positionierung
+    Group {
+        children [
+            Transform { translation -35 -0.5 -15, children [ USE PFLANZE_GEO ] },
+            Transform { translation -35 -0.5 5, children [ USE PFLANZE_GEO ] },
+            Transform { translation -35 -0.5 25, children [ USE PFLANZE_GEO ] },
+            Transform { translation -35 -0.5 -25, children [ USE PFLANZE_GEO ] },
+            Transform { translation -35 -0.5 -5, children [ USE PFLANZE_GEO ] },
+            Transform { translation -35 -0.5 15, children [ USE PFLANZE_GEO ] },
+            Transform { translation 35 -0.5 -15, children [ USE PFLANZE_GEO ] },
+            Transform { translation 35 -0.5 5, children [ USE PFLANZE_GEO ] },
+            Transform { translation 35 -0.5 25, children [ USE PFLANZE_GEO ] },
+            Transform { translation 35 -0.5 -25, children [ USE PFLANZE_GEO ] },
+            Transform { translation 35 -0.5 -5, children [ USE PFLANZE_GEO ] },
+            Transform { translation 35 -0.5 15, children [ USE PFLANZE_GEO ] }
+        ]
+    },
+
+    #Mülleimer-Positionierung
+    Group {
+        children [
+            Transform { translation -35 -0.4 22, children [ USE MUELLEIMER_GEO ] },
+            Transform { translation 35 -0.4 22, children [ USE MUELLEIMER_GEO ] },
+            Transform { translation -35 -0.4 -22, children [ USE MUELLEIMER_GEO ] },
+            Transform { translation 35 -0.4 -22, children [ USE MUELLEIMER_GEO ] }
+        ]
+    },
+
+    #Tannenbaum in der Mitte
+    Transform {
+        translation 0 -0.7 0  #genau mittig auf dem Eis
+        children [
+            #Baumstamm
+            Transform {
+                translation 0 1.5 0 #damit er auf dem Boden steht (Höhe 3 / 2)
+                children [
+                    Shape {
+                        appearance Appearance { material Material { diffuseColor 0.4 0.2 0.1 } } #braun
+                        geometry Cylinder { height 3.0 radius 0.8 }
+                    }
+                ]
+            },
+            #Nadeln  (unten am grßten)
+            Transform {
+                translation 0 3.5 0 
+                children [
+                    Shape {
+                        #grün einmal definieren um es wiederzuverwenden
+                        appearance DEF NADEL_GRUEN Appearance { material Material { diffuseColor 0.1 0.4 0.1 } } 
+                        geometry Cone { bottomRadius 7.0 height 8.0 }
+                    }
+                ]
+            },
+            #Nadeln (Mitte)
+            Transform {
+                translation 0 7.0 0
+                children [
+                    Shape {
+                        appearance USE NADEL_GRUEN
+                        geometry Cone { bottomRadius 5.0 height 6.0 }
+                    }
+                ]
+            },
+            #Nadeln (oben, klein)
+            Transform {
+                translation 0 10.0 0
+                children [
+                    Shape {
+                        appearance USE NADEL_GRUEN
+                        geometry Cone { bottomRadius 3.0 height 5.0 }
+                    }
+                ]
+            },
+            #Spitze (mit leuchtende Kugel)
+            Transform {
+                translation 0 12.5 0
+                children [
+                    Shape {
+                        appearance Appearance { 
+                            material Material { 
+                                diffuseColor 1 1 0 
+                                emissiveColor 0.8 0.8 0 #leuchtet auch im dunkeln
+                            } 
+                        }
+                        geometry Sphere { radius 0.8 }
+                    }
+                ]
+            }
+        ]
+    },
+
+    #Gebäude
+    Group {
+        children [ #Position , HausOptik und Größe
+            Transform { translation -58 1.2 -58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 4 4 } } ] },
+            Transform { translation 57.5 2.2 -58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 5 6 4 } } ] },
+            Transform { translation -40 1.2 -57 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 6 4 6 } } ] },
+            Transform { translation 40 2.2 -57 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 5 6 4 } } ] },
+            Transform { translation -56 3.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 8 8 8 } } ] },
+            Transform { translation 0 5.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 12 12 12 } } ] },
+            Transform { translation 55 4.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 10 10 8 } } ] },
+            Transform { translation -20 4.2 -57 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 8 10 8 } } ] },
+            Transform { translation 20 3.2 -57 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 6 8 6 } } ] },
+            Transform { translation -58 2.2 40 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 6 10 } } ] },
+            Transform { translation -58 3.2 0 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 8 12 } } ] },
+            Transform { translation -58 1.2 -40 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 4 8 } } ] },
+            Transform { translation 58 4.2 40 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 10 10 } } ] },
+            Transform { translation 58 2.2 0 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 6 12 } } ] },
+            Transform { translation 58 3.2 -40 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 8 8 } } ] },
+            Transform { translation -50 1.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 4 4 } } ] },
+            Transform { translation -40 2.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 6 6 6 } } ] },
+            Transform { translation -28 3.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 8 8 8 } } ] },
+            Transform { translation -16 2.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 6 4 } } ] },
+            Transform { translation 16 1.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 4 4 } } ] },
+            Transform { translation 28 4.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 6 10 6 } } ] },
+            Transform { translation 40 3.2 58 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 8 8 8 } } ] },
+            
+            #Marktstand 1
+            Transform { translation -50 1.2 -55 children [ #Position auf dem Marktplatz
+                Shape { appearance USE HAUS_OPTIK geometry Box { size 6 4 8 } }, #Größe des Hauses
+                #zweiter Bauteil:
+                Transform { translation 0 0 4.01 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 3 1.5 0.1 } } ] }
+            ] },
+            #Marktstand 2
+            Transform { translation 50 2.2 -55 children [ 
+                Shape { appearance USE HAUS_OPTIK geometry Box { size 8 6 6 } },
+                Transform { translation 0 0 3.01 children [ Shape { appearance USE HAUS_OPTIK geometry Box { size 4 2 0.1 } } ] }
+            ] },
+            #Kassenschalter
+            Transform { translation 6 1.2 37 rotation 0 1 0 -1.5708 children [ 
+                Shape { appearance Appearance { material Material { diffuseColor 0.9 0.6 0.6 } } geometry Box { size 4 4 4 } },
+                Transform { translation 0 0.5 2.01 children [ Shape { appearance Appearance { material Material { diffuseColor 0.7 0.9 1 } } geometry Box { size 1.5 1.2 0.1 } } ] }
+            ] }
+        ]
+    }
+  ]
+}
+
+
+
+
+#==============================================================================
+#Eisläufer
+#==============================================================================
+
+Group {
+  children [
+    #Blau und Gelb          Position                     name                            Kopffarbe                    name für viewpoint
+    Transform { translation -10 0.05 15 children [ DEF BLAUER_EISLAUEFER Eislauefer { kopfFarbe 0.6 0.6 0.9 name "Ich: Blauer Eisläufer" } ] },
+    Transform { translation -5 0.05 20 children [ DEF GELBER_EISLAUEFER Eislauefer { kopfFarbe 0.9 0.9 0.6 name "Ich: Gelber Eisläufer" } ] },
+
+
+
+
+
+    #Roter Eisläufer (Vorläufer)
+    DEF ANIM_ZEIT TimeSensor { cycleInterval 40.0 loop FALSE }, #Animation-Intervall geht 40 Sekunden, loop False weil nur einmal, ohne Wiederholung
+    DEF ANIM_POS PositionInterpolator { #Rechtnet aus, wo Eisläufer zur welchen Zeit sein soll
+      #Zeitpunkte: 0.500 = Hälfte der Zeit = 20Sekunden
+      key [ 0.000, 0.065, 0.190, 0.270, 0.285, 0.300, 0.380, 0.500, 0.520, 0.540, 0.560, 0.580, 0.750, 0.850, 0.865, 0.880, 0.930, 1.000 ]
+      #zugehörigen Koordinaten der Orte
+      keyValue [ 0 0.05 25, 25 0.05 25, 25 0.05 -25, 15 0.05 -10, 5 2.5 0, -5 0.05 10, -25 0.05 25, -25 0.05 -25, -20 0.05 -25, -20 0.05 -20, -25 0.05 -20, -25 0.05 -25, 25 0.05 -25, 25 0.05 -5, 25 2.5 5, 25 0.05 15, 25 0.05 25, 0 0.05 25 ]
+      #Interpolator berechnet alle Zwischenwerte für flüssigen ablauf
+    },
+    DEF ANIM_ROT OrientationInterpolator { #Blickrichtung des Eisläufers
+      #Zeiten
+      key [ 0.000, 0.065, 0.066, 0.190, 0.191, 0.270, 0.285, 0.300, 0.380, 0.381, 0.500, 0.520, 0.540, 0.560, 0.580, 0.581, 0.750, 0.751, 1.000 ]
+      #Blickrichtung zu den jeweiligen Zeiten
+      keyValue [ 0 1 0 4.71, 0 1 0 4.71, 0 1 0 3.14, 0 1 0 3.14, 0 1 0 0.78, 0 1 0 0.78, 0 1 0 7.06, 0 1 0 0.78, 0 1 0 0.78, 0 1 0 3.14, 0 1 0 3.14, 0 1 0 0.00, 0 1 0 4.71, 0 1 0 3.14, 0 1 0 3.14, 0 1 0 4.71, 0 1 0 4.71, 0 1 0 0.00, 0 1 0 0.00 ]
+    },
+    DEF ROTER_EISLAUEFER_TRANS Transform {
+      translation 0 0.05 25 #Startposition des Eisläufers
+      children [
+        DEF STARTER_SENSOR TouchSensor { description "Start Animation" }, #Startknopf am Körper, bei Klick: Signal an ANIM_Zeit
+        #3D Model aus externen Datei laden:
+        DEF MEIN_ROTER_EISLAUEFER Eislauefer { kopfFarbe 0.9 0.6 0.6 name "Ich: Rot" } #name für Viewpoint
+      ]
+    },
+
+
+
+
+
+    #Grüner Eisläufer (Verfolger) 
+    DEF ANIM_ZEIT_GRUEN TimeSensor { cycleInterval 43.0 loop FALSE }, #3 Sekunden Länger, weil er von anderer Position startet
+    DEF ANIM_POS_GRUEN PositionInterpolator {
+      key [ 0.000, 0.070, 0.070, 0.130, 0.247, 0.321, 0.335, 0.349, 0.423, 0.535, 0.553, 0.572, 0.591, 0.609, 0.767, 0.860, 0.874, 0.888, 0.935, 1.000 ]
+      keyValue [ 5 0.05 10, 0 0.05 25, 0 0.05 25, 25 0.05 25, 25 0.05 -25, 15 0.05 -10, 5 2.5 0, -5 0.05 10, -25 0.05 25, -25 0.05 -25, -20 0.05 -25, -20 0.05 -20, -25 0.05 -20, -25 0.05 -25, 25 0.05 -25, 25 0.05 -5, 25 2.5 5, 25 0.05 15, 25 0.05 25, 5 0.05 25 ]
+    }, #steht am Ende 5 Meter neben roten Eisläufer
+    DEF ANIM_ROT_GRUEN OrientationInterpolator {
+      key [ 0.000, 0.070, 0.070, 0.130, 0.131, 0.247, 0.248, 0.321, 0.335, 0.349, 0.423, 0.424, 0.535, 0.553, 0.572, 0.591, 0.609, 0.610, 0.767, 0.768, 1.000 ]
+      keyValue [ 0 1 0 0.32, 0 1 0 0.32, 0 1 0 4.71, 0 1 0 4.71, 0 1 0 3.14, 0 1 0 3.14, 0 1 0 0.78, 0 1 0 0.78, 0 1 0 7.06, 0 1 0 0.78, 0 1 0 0.78, 0 1 0 3.14, 0 1 0 3.14, 0 1 0 0.00, 0 1 0 4.71, 0 1 0 3.14, 0 1 0 3.14, 0 1 0 4.71, 0 1 0 4.71, 0 1 0 0.00, 0 1 0 0.00 ]
+    },
+    DEF GRUENER_EISLAUEFER_TRANS Transform {
+      translation 5 0.05 10 #Startposition
+      children [ DEF MEIN_GRUENER_EISLAUEFER Eislauefer { kopfFarbe 0.6 0.9 0.6 name "Ich: Grün" } ]
+    }
+  ]
+}
+
+
+
+
+
+
+#==============================================================================
+#Routen       Prinzip: Sender.Ausgang TO Empfänger.Eingang
+# ==============================================================================
+
+
+#Animation: Roter Eisläufer (Vorläufer)
+ROUTE STARTER_SENSOR.touchTime TO ANIM_ZEIT.startTime 
+#Klick auf Sensor(touchTime) beim roten Eisläufer: Signal an Timer (ANIM_ZEIT), Timer (startTime) zählt 40 Sekunden
+ROUTE ANIM_ZEIT.fraction_changed TO ANIM_POS.set_fraction
+ROUTE ANIM_ZEIT.fraction_changed TO ANIM_ROT.set_fraction
+#Während Timer äuft sendet er aktellen Fortschritt an fraction_changed, Wert geht an Interpolatoren (Position und Rotation)
+#Bei 50% der Zeit an Position x
+ROUTE ANIM_POS.value_changed TO ROTER_EISLAUEFER_TRANS.translation
+ROUTE ANIM_ROT.value_changed TO ROTER_EISLAUEFER_TRANS.rotation
+#Bewegung: Interpolatoren senden berechneten Koordinaten(value_changed) an Knoten des Eisläufers, dadurch bewegt und rotiert er sich
+ROUTE ANIM_ZEIT.isActive TO MEIN_ROTER_EISLAUEFER.set_laeuft
+#Beine: Timer sendet TRUE an isActive solang der Eisläufer läuft, Signal geht an Proto(set_laueft), damit Beine sich bewegen
+
+
+
+
+
+#Animation: Grüner Eisläufer (Verfolger)
+ROUTE STARTER_SENSOR.touchTime TO ANIM_ZEIT_GRUEN.startTime
+ROUTE ANIM_ZEIT_GRUEN.fraction_changed TO ANIM_POS_GRUEN.set_fraction
+ROUTE ANIM_ZEIT_GRUEN.fraction_changed TO ANIM_ROT_GRUEN.set_fraction
+ROUTE ANIM_POS_GRUEN.value_changed TO GRUENER_EISLAUEFER_TRANS.translation
+ROUTE ANIM_ROT_GRUEN.value_changed TO GRUENER_EISLAUEFER_TRANS.rotation
+ROUTE ANIM_ZEIT_GRUEN.isActive TO MEIN_GRUENER_EISLAUEFER.set_laeuft
+
+
+
+
+
+
+#Lichtschalter-Logik
+ROUTE SCHALTER_SENSOR.touchTime TO LICHT_SCRIPT.touchTime
+#Klick auf Lichtschalter geht an LICHT_SCRIPT
+ROUTE LICHT_SCRIPT.switchChoice TO LICHT_MASTER_SWITCH.whichChoice
+#SKRIPT entscheidet  0/1 und schaltet Laternen um 
+ROUTE LICHT_SCRIPT.buttonColor TO SCHALTER_MAT.diffuseColor
+#Skritp färbt Knopf um 
+
+
+
+
+
+
+#Logik für Tag/Nacht Schalter 
+ROUTE NACHT_SENSOR.touchTime TO NACHT_SCRIPT.touchTime
+#Klick aktiviert NACHT_SCRIPT
+ROUTE NACHT_SCRIPT.buttonColor TO NACHT_KNOPF_MAT.diffuseColor
+#Schalter färbt sich 
+ROUTE NACHT_SCRIPT.sunIntensity TO SONNE.intensity
+#Sonne wird auf Tag oder Nacht gestellt 
+ROUTE NACHT_SCRIPT.lanternState TO LICHT_MASTER_SWITCH.whichChoice
+#SKRIPT schaltet Laternen an/aus
+
+
+
+
+
+#Taschenlampen
+ROUTE NACHT_SCRIPT.flashlightState TO BLAUER_EISLAUEFER.taschenlampe
+ROUTE NACHT_SCRIPT.flashlightState TO GELBER_EISLAUEFER.taschenlampe
+ROUTE NACHT_SCRIPT.flashlightState TO MEIN_ROTER_EISLAUEFER.taschenlampe
+ROUTE NACHT_SCRIPT.flashlightState TO MEIN_GRUENER_EISLAUEFER.taschenlampe
+#Taschenlampen-SKRIPT sendet TRUE/FALSE an taschenlampe-Feld des jeweiligen Eisläufers
+#Dort wird SpotLight am Bauch an/aus geschaltet

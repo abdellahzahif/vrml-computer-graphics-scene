@@ -1,0 +1,134 @@
+#VRML V2.0 utf8
+
+PROTO Eislauefer [
+  field SFColor kopfFarbe 0.9 0.6 0.6 #Standard-Farbe
+  field SFString name "Eislauefer" #Standard-Name
+  exposedField SFBool laeuft FALSE #dynamisch (ändert sich im Programm) Standardwert, Animation am Anfang aus
+  exposedField SFBool taschenlampe FALSE #dynamisch (ändert sich im Programm) Standardwert, Taschenlampe am Anfang aus
+]
+{
+  Group {
+    children [
+      #Animation für die Beinbewegung
+      DEF BEIN_TIMER TimeSensor { #Name = BEIN_TIMER
+        cycleInterval 1.5 #Dauer von einer Bein-Bewegung 
+        loop TRUE #Wiederholung der Bein-Bewegung
+        enabled IS laeuft #Schalter für TimeSensor wird von laeuft gesteuert
+      }
+
+      #Natürliche Laufbewegung für die Beine (entgegengesetzt- links, rechts)
+      DEF LINKES_BEIN_ANIM OrientationInterpolator {
+        key [ 0.0, 0.25, 0.5, 0.75, 1.0 ]
+        keyValue [ 1 0 0 0.0, 1 0 0 -0.6, 1 0 0 0.0, 1 0 0 0.6, 1 0 0 0.0 ]
+      }
+
+      DEF RECHTES_BEIN_ANIM OrientationInterpolator {
+        key [ 0.0, 0.25, 0.5, 0.75, 1.0 ]
+        keyValue [ 1 0 0 0.0, 1 0 0 0.6, 1 0 0 0.0, 1 0 0 -0.6, 1 0 0 0.0 ]
+      }
+
+      #Geometrie des Eisläufers
+      Transform { 
+          children [
+              
+              #TASCHENLAMPE (Licht + Gehäuse)
+              Transform {
+                translation 0 0.1 0.35 #vor dem Bauch
+                rotation 1 0 0 -0.2    #leicht nach unten geneigt
+                children [
+                    #Lichtquelle
+                    SpotLight {
+                        on IS taschenlampe   #Schalter
+                        intensity 1.0
+                        color 1 1 0.9        #weißton
+                        direction 0 0 1      #leuchtet nach vorne 
+                        cutOffAngle 0.7      #breiter Lichtkegel
+                        beamWidth 0.3        #heller Kern
+                        location 0 0 0
+                        radius 30            #Reichweite
+                        attenuation 0 0.2 0  
+                    },
+                    #Gehäuse (Schwarzer Zylinder)
+                    Transform {
+                        rotation 1 0 0 1.57 
+                        children [
+                            Shape {
+                                appearance Appearance { material Material { diffuseColor 0.2 0.2 0.2 } }
+                                geometry Cylinder { radius 0.05 height 0.3 }
+                            }
+                        ]
+                    }
+                ]
+              },
+
+              #Rumpf
+              Transform {
+                  translation 0 0.5 0 #Position
+                  children [
+                      Shape {
+                          appearance Appearance { material Material { diffuseColor 0 0.5 1 } } #blaues Hemd
+                          geometry IndexedFaceSet {
+                              coord Coordinate { point [ -0.4 0.5 -0.15, 0.4 0.5 -0.15, 0.4 0.5 0.15, -0.4 0.5 0.15, -0.4 -0.5 -0.15, 0.4 -0.5 -0.15, 0.4 -0.5 0.15, -0.4 -0.5 0.15 ] }
+                              #flacher breiter Quader
+                              #ersten 4 Punkte: Schultern
+                              #zweiten 4 Punkte: Taille
+                              #x-Werte:Breite
+                              #z-Werte:Tiefe
+
+                              coordIndex [ 0 1 2 3 -1, 4 5 6 7 -1, 0 1 5 4 -1, 1 2 6 5 -1, 2 3 7 6 -1, 3 0 4 7 -1 ]
+                              #Verbindungen zwischen Punkten 
+                              solid FALSE #von innen und außen sichtbar
+                          }
+                      }
+                  ]
+              }, 
+              
+              #Kopf
+              Transform {
+                  translation 0 1.7 0 
+                  children [
+                      Shape {
+                          appearance Appearance { material Material { diffuseColor IS kopfFarbe } }
+                          geometry Sphere { radius 0.25 }
+                      }
+                  ]
+              }, 
+              
+              #Beine
+              DEF BEIN_LINKS Transform {
+                  translation -0.2 -0.4 0  #Position des Beines
+                  center 0 0.4 0  #Drehpunkt an der Hüfte, schwingt wie ein Pendel
+                  children [
+                      DEF BEIN_GEO Shape {
+                          appearance Appearance { material Material { diffuseColor 0.1 0.1 0.1 } } #dunkle Hose
+                          geometry IndexedFaceSet {
+                               coord Coordinate { point [ -0.1 0.4 -0.1, 0.1 0.4 -0.1, 0.1 0.4 0.1, -0.1 0.4 0.1, -0.1 -0.4 -0.1, 0.1 -0.4 -0.1, 0.1 -0.4 0.1, -0.1 -0.4 0.1 ] }
+                               coordIndex [ 0 1 2 3 -1, 4 5 6 7 -1, 0 1 5 4 -1, 1 2 6 5 -1, 2 3 7 6 -1, 3 0 4 7 -1 ]
+                               solid FALSE
+                          }
+                      }
+                  ]
+              },
+              DEF BEIN_RECHTS Transform {
+                  translation 0.2 -0.4 0 
+                  center 0 0.4 0
+                  children [ USE BEIN_GEO ]
+              }
+          ]
+      }
+    ]
+  }
+  
+  #Routen für die Animation 
+  #Timer gibt aktuelle Zeit an Interpolator weiter, für flüssige Übergänge
+  ROUTE BEIN_TIMER.fraction_changed TO LINKES_BEIN_ANIM.set_fraction
+  ROUTE BEIN_TIMER.fraction_changed TO RECHTES_BEIN_ANIM.set_fraction
+  #Timer läuft endlos im Kreis und sendet Signale an Interpolatoren
+  #So wissen Interpolatoren immer an welcher Stelle der Animation sie sich befinden 
+
+  #Interpolator befiehlt Bein-Objekt die Drehung der Beine jede Sekunde für flüssige Übergänge 
+  ROUTE LINKES_BEIN_ANIM.value_changed TO BEIN_LINKS.rotation
+  ROUTE RECHTES_BEIN_ANIM.value_changed TO BEIN_RECHTS.rotation
+  #Interpolator hat Zeit und gibt Winkel für Beine zurück
+  #Signal landet bei Transform Knoten des Beines, dieser dreht den Bein aus neue Winkel
+}
