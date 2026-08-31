@@ -1,7 +1,7 @@
 # ❄️ Interactive 3D Christmas Marketplace & Ice Rink (VRML)
 
 A complex, interactive 3D virtual environment built using **VRML (Virtual Reality Modeling Language)**. The project simulates a winter marketplace featuring an ice rink, houses, lanterns, custom-modeled animated skaters, and a dynamic day/night environmental switching system.
-
+![Christmas Marketplace Preview](Screenshots/2025-11-27.png)
 ---
 
 ## 🚀 Key Technical Features
